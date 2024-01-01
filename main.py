@@ -1,4 +1,4 @@
-import skype_chatbot
+from skype_chatbot import send_message
 import json
 from flask import Flask, request
 from util import get_reply
@@ -7,9 +7,6 @@ from config import app_id, app_secret
 
 app = Flask(__name__)
 
-
-
-bot = skype_chatbot.SkypeBot(app_id, app_secret)
 
 
 @app.route('/webhook', methods=['POST', 'GET'])
@@ -44,7 +41,7 @@ def api_messages():
                 sender = data['conversation']['id']
                 text = reply_text
 
-                bot.send_message(bot_id, bot_name, recipient, service, sender, text)
+                send_message(bot_id, bot_name, recipient, service, sender, text, 'markdown')
 
         except Exception as e:
             print(e)

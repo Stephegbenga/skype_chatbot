@@ -1,74 +1,96 @@
-import threading
-import time
-from .skype_chatbot import *
+import requests
+from util import get_token
 
 
-class SkypeBot:
-    
-    def __init__(self, client_id, client_secret):
+def send_message(bot_id, bot_name, recipient, service, sender, text, text_format):
+    try:
+        token = get_token()
+        payload = {"type": "message", "text": text, "from": {"id": bot_id, "name": bot_name, }, "recipient": recipient, "textFormat": text_format,
+            # markdown
+            "conversation": {"id": sender}}
+        r = requests.post(service + '/v3/conversations/' + sender + '/activities/',
+                          headers={"Authorization": "Bearer " + str(token), "Content-Type": "application/json"},
+                          json=payload)
 
-        def get_token():
-            global token
+        print('request status: ', r)
 
-            payload = "grant_type=client_credentials&client_id=" + client_id + "&client_secret=" + client_secret + \
-                      "&scope=https%3A%2F%2Fapi.botframework.com%2F.default"
-            response = requests.post("https://login.microsoftonline.com/common/oauth2/v2.0/token?client_id=" +
-                                     client_id + "&client_secret=" + client_secret + "&grant_type=client_credentials&"
-                                     "scope=https%3A%2F%2Fgraph.microsoft.com%2F.default", data=payload,
-                                     headers={"Host": "login.microsoftonline.com",
-                                              "Content-Type": "application/x-www-form-urlencoded"})
-            data = response.json()
-            token = data["access_token"]
+    except Exception as e:
 
-        def run_it():
-            while True:
-                get_token()
-                time.sleep(3590)
+        print('exception status: ', e)
 
-        self.t = threading.Thread(target=run_it)
-        self.t.daemon = True
-        self.t.start()
 
-    @staticmethod
-    def send_message(bot_id, bot_name, recipient, service, sender, text, text_format='markdown'):
-        return send_message(token, bot_id, bot_name, recipient, service, sender, text, text_format)
+def create_button(button_type, title, value):
+    button_dict = dict()
+    button_dict["type"] = button_type
+    button_dict["title"] = title
+    button_dict["value"] = value
 
-    @staticmethod
-    def create_card_image(url, alt=None):
-        return create_card_image(url, alt)
+    return button_dict
 
-    @staticmethod
-    def create_card_adaptive(items, actions):
-        return create_card_adaptive(items, actions)
 
-    @staticmethod
-    def create_button(button_type, title, value):
-        return create_button(button_type, title, value)
+def create_card_image(url, alt):
+    img_dict = dict()
+    img_dict["url"] = url
+    img_dict["alt"] = alt
 
-    @staticmethod
-    def create_card_attachment(card_type, title, subtitle=None, text=None, images=None, buttons=None):
-        return create_card_attachment(card_type, title, subtitle, text, images, buttons)
+    return img_dict
 
-    @staticmethod
-    def create_animation_card(card_type, url, images, title, subtitle, text, buttons, autoloop=True, autostart=True,
-                              shareable=True):
-        return create_animation_card(card_type, url, images, title, subtitle, text, buttons, autoloop,
-                                     autostart, shareable)
 
-    @staticmethod
-    def send_media(bot_id, bot_name, recipient, service, sender, message_type, url, attachment_name=None):
-        return send_media(token, bot_id, bot_name, recipient, service, sender, message_type, url,
-                          attachment_name)
+def create_card_attachment(card_type, title, subtitle, text, images, buttons):
+    card_attachment = {"contentType": "application/vnd.microsoft.card." + card_type, "content": {"title": title, "subtitle": subtitle, "text": text, "images": images, "buttons": buttons}}
 
-    @staticmethod
-    def send_card(bot_id, bot_name, recipient, reply_to_id, service, sender, message_type, card_attachment, text):
-        return send_card(token, bot_id, bot_name, recipient, reply_to_id, service, sender, message_type,
-                         card_attachment, text)
+    return card_attachment
 
-    @staticmethod
-    def create_item_for_adaptive_card(items):
-        return items
 
-    @staticmethod
-    def create_action_for_adaptive_card(actions):
-        return actions
+def send_media(token, bot_id, bot_name, recipient, service, sender, message_type, url, attachment_name):
+    try:
+        payload = {"type": "message", "from": {"id": bot_id, "name": bot_name, }, "recipient": recipient, "conversation": {"id": sender}, "attachments": [
+            {"contentType": message_type, "contentUrl": url, "name": attachment_name}]}
+
+        r = requests.post(service + '/v3/conversations/' + sender + '/activities/',
+                          headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+                          json=payload)
+
+        print('request status: ', r)
+
+    except Exception as e:
+
+        print('exception status: ', e)
+
+
+def send_card(token, bot_id, bot_name, recipient, reply_to_id, service, sender, message_type, card_attachment, text):
+    try:
+        payload = {"from": {"id": bot_id, "name": bot_name, }, "recipient": recipient, "type": "message", "attachmentLayout": message_type,
+            # AttachmentLayout: carousel or list
+            "text": text, "attachments": card_attachment, "conversation": {"id": sender}, "replyToId": reply_to_id}
+        r = requests.post(service + '/v3/conversations/' + sender + '/activities/',
+                          headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+                          json=payload)
+
+        print('request status: ', r)
+
+    except Exception as e:
+
+        print('exception status: ', e)
+
+
+def create_animation_card(card_type, url, images, title, subtitle, text, buttons, autoloop, autostart, shareable):
+    card_animation = {"contentType": "application/vnd.microsoft.card." + card_type, "content": {"autoloop": autoloop, "autostart": autostart, "shareable": shareable, "media": [
+        {"profile": "gif", "url": url}], "title": title, "subtitle": subtitle, "text": text, "images": images, "buttons": buttons}}
+
+    return card_animation
+
+
+def create_card_adaptive(items, actions):
+    card_attachment = {"contentType": "application/vnd.microsoft.card.adaptive", "content": {"type": "AdaptiveCard", "body": [
+        items], "actions": [actions], }}
+
+    return card_attachment
+
+
+def create_item_for_adaptive_card(items):
+    return items
+
+
+def create_action_for_adaptive_card(actions):
+    return actions
